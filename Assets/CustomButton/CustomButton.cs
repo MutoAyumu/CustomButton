@@ -36,9 +36,15 @@ public class CustomButton : MonoBehaviour,
 
     AudioSource _audioSource;
 
-    Type _transition;
+    Animator _anim;
 
-    public Type Transition { get => _transition; set => _transition = value;}
+    [HideInInspector] public TransitionType Transition;
+
+    [HideInInspector] public Color[] Colors = new Color[5];
+
+    [HideInInspector] public Sprite[] Sprites = new Sprite[5];
+
+    [HideInInspector] public string[] Animations = new string[5];
 
     /// <summary>
     /// クリックした時にさせたい処理
@@ -49,6 +55,7 @@ public class CustomButton : MonoBehaviour,
     {
         _buttonImage = GetComponent<Image>();
         _audioSource = GetComponent<AudioSource>();
+        _anim = GetComponent<Animator>();
         _mainSprite = _buttonImage.sprite;
 
         if(_onPointerEnterImage)
@@ -63,9 +70,12 @@ public class CustomButton : MonoBehaviour,
         OnClickCallback?.Invoke();
         Debug.Log("クリック");
 
-        if (!_onPointerClickAudio) return;
+        if (_onPointerClickAudio)
+        {
+            _audioSource.PlayOneShot(_onPointerClickAudio);
+        }
 
-        _audioSource.PlayOneShot(_onPointerClickAudio);
+        ChangeTransition(1);
     }
     /// <summary>
     /// タップダウン
@@ -73,9 +83,7 @@ public class CustomButton : MonoBehaviour,
     /// <param name="eventData"></param>
     public void OnPointerDown(PointerEventData eventData) 
     {
-        if (!_onPointerDownSprite) return;
-
-        _buttonImage.sprite = _onPointerDownSprite;
+        ChangeTransition(2);
     }
     /// <summary>
     /// タップアップ
@@ -83,28 +91,53 @@ public class CustomButton : MonoBehaviour,
     /// <param name="eventData"></param>
     public void OnPointerUp(PointerEventData eventData) 
     {
-        if (!_onPointerDownSprite) return;
-
-        _buttonImage.sprite = _mainSprite;
+        ChangeTransition(0);
     }
-    public void OnPointerEnter(PointerEventData eventData) 
+    public void OnPointerEnter(PointerEventData eventData)
     {
-        if (!_onPointerEnterImage) return;
+        if (_onPointerEnterImage)
+        {
+            _onPointerEnterImage.enabled = true;
+        }
 
-        _onPointerEnterImage.enabled = true;
+        if (_onPointerEnterAudio)
+        {
+            _audioSource.PlayOneShot(_onPointerEnterAudio);
+        }
 
-        if (!_onPointerEnterAudio) return;
-
-        _audioSource.PlayOneShot(_onPointerEnterAudio);
+        ChangeTransition(1);
     }
     public void OnPointerExit(PointerEventData eventData)
     {
-        if (!_onPointerEnterImage) return;
+        if (_onPointerEnterImage)
+        {
+            _onPointerEnterImage.enabled = false;
+        }
 
-        _onPointerEnterImage.enabled = false;
+        ChangeTransition(0);
+    }
+    private void ChangeTransition(int i)
+    {
+        switch (Transition)
+        {
+            case TransitionType.None:
+                break;
+
+            case TransitionType.Color:
+                _buttonImage.color = Colors[i];
+                break;
+
+            case TransitionType.Sprite:
+                _buttonImage.sprite = Sprites[i];
+                break;
+
+            case TransitionType.Animation:
+                _anim.SetTrigger(Animations[i]);
+                break;
+        }
     }
 }
-public enum Type
+public enum TransitionType
 {
     None,
     Color,
