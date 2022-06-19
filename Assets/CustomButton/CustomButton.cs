@@ -3,48 +3,41 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+
 
 [RequireComponent(typeof(Image))]
 [RequireComponent(typeof(AudioSource))]
 /// <summary>
 /// カスタムボタンクラス
 /// </summary>
-public class CustomButton : MonoBehaviour, 
-    IPointerClickHandler,
-    IPointerDownHandler, 
-    IPointerUpHandler, 
-    IPointerEnterHandler, 
-    IPointerExitHandler
+public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
 {
-    [Header("Sprite & Image")]
-    [SerializeField, Tooltip("ポインタがオブジェクトを押下した時に差し替えるスプライト")] 
-    Sprite _onPointerDownSprite;
-
-    [SerializeField, Tooltip("ポインタがオブジェクトに乗った時に表示するイメージ")] 
-    Image _onPointerEnterImage;
-
     Image _buttonImage;
-    Sprite _mainSprite;
-
-    [Header("Audio")]
-    [SerializeField, Tooltip("ポインタがオブジェクトに乗った時に出す音源")] 
-    AudioClip _onPointerEnterAudio;
-
-    [SerializeField, Tooltip("オブジェクト上でポインタを押下し、同一のオブジェクト上で離した時に出す音源")] 
-    AudioClip _onPointerClickAudio;
-
     AudioSource _audioSource;
-
     Animator _anim;
+    bool _isSelect;
 
-    [HideInInspector] public TransitionType Transition;
+    public Image OnSelectImage;
 
-    [HideInInspector] public Color[] Colors = new Color[5];
+    public AudioClip OnPointerEnterAudio;
 
-    [HideInInspector] public Sprite[] Sprites = new Sprite[5];
+    public AudioClip OnPointerClickAudio;
 
-    [HideInInspector] public string[] Animations = new string[5];
+    public TransitionType Transition;
+
+    public Type Type;
+
+    public Color[] Colors = new Color[5];
+
+    public float FadeDuration = 0.1f;
+
+    public Sprite[] Sprites = new Sprite[5];
+
+    public string[] Animations = new string[5];
+
+    public string SceneName;
 
     /// <summary>
     /// クリックした時にさせたい処理
@@ -56,10 +49,6 @@ public class CustomButton : MonoBehaviour,
         _buttonImage = GetComponent<Image>();
         _audioSource = GetComponent<AudioSource>();
         _anim = GetComponent<Animator>();
-        _mainSprite = _buttonImage.sprite;
-
-        if(_onPointerEnterImage)
-        _onPointerEnterImage.enabled = false;
     }
     /// <summary>
     /// クリック
@@ -67,21 +56,21 @@ public class CustomButton : MonoBehaviour,
     /// <param name="eventData"></param>
     public void OnPointerClick(PointerEventData eventData) 
     {
-        OnClickCallback?.Invoke();
-        Debug.Log("クリック");
+        //Debug.Log("クリック");
 
-        if (_onPointerClickAudio)
+        if (OnPointerClickAudio)
         {
-            _audioSource.PlayOneShot(_onPointerClickAudio);
+            _audioSource.PlayOneShot(OnPointerClickAudio);
         }
 
+        Press();
         ChangeTransition(1);
     }
     /// <summary>
     /// タップダウン
     /// </summary>
     /// <param name="eventData"></param>
-    public void OnPointerDown(PointerEventData eventData) 
+    public override void OnPointerDown(PointerEventData eventData) 
     {
         ChangeTransition(2);
     }
@@ -89,32 +78,101 @@ public class CustomButton : MonoBehaviour,
     /// タップアップ
     /// </summary>
     /// <param name="eventData"></param>
-    public void OnPointerUp(PointerEventData eventData) 
+    public override void OnPointerUp(PointerEventData eventData) 
     {
-        ChangeTransition(0);
+        if (!_isSelect) return;
+
+        ChangeTransition(1);
     }
-    public void OnPointerEnter(PointerEventData eventData)
+    public override void OnPointerEnter(PointerEventData eventData)
     {
-        if (_onPointerEnterImage)
+        if (OnSelectImage)
         {
-            _onPointerEnterImage.enabled = true;
+            OnSelectImage.enabled = true;
         }
 
-        if (_onPointerEnterAudio)
+        if (OnPointerEnterAudio)
         {
-            _audioSource.PlayOneShot(_onPointerEnterAudio);
+            _audioSource.PlayOneShot(OnPointerEnterAudio);
         }
 
         ChangeTransition(1);
     }
-    public void OnPointerExit(PointerEventData eventData)
+    public override void OnPointerExit(PointerEventData eventData)
     {
-        if (_onPointerEnterImage)
+        if (OnSelectImage)
         {
-            _onPointerEnterImage.enabled = false;
+            OnSelectImage.enabled = false;
         }
 
         ChangeTransition(0);
+    }
+    /// <summary>
+    /// クリック
+    /// </summary>
+    /// <param name="eventData"></param>
+    public void OnSubmit(BaseEventData eventData)
+    {
+        //Debug.Log("クリック");
+
+        if (OnPointerClickAudio)
+        {
+            _audioSource.PlayOneShot(OnPointerClickAudio);
+        }
+
+        Press();
+        ChangeTransition(2);
+
+        StartCoroutine(OnFinishSubmit());
+    }
+    /// <summary>
+    /// 選択
+    /// </summary>
+    /// <param name="eventData"></param>
+    public override void OnSelect(BaseEventData eventData)
+    {
+        _isSelect = true;
+
+        if (OnSelectImage)
+        {
+            OnSelectImage.enabled = true;
+        }
+
+        if (OnPointerEnterAudio)
+        {
+            _audioSource.PlayOneShot(OnPointerEnterAudio);
+        }
+
+        ChangeTransition(3);
+    }
+    /// <summary>
+    /// 選択解除
+    /// </summary>
+    /// <param name="eventData"></param>
+    public override void OnDeselect(BaseEventData eventData)
+    {
+        _isSelect = false;
+
+        if (OnSelectImage)
+        {
+            OnSelectImage.enabled = false;
+        }
+
+        ChangeTransition(4);
+    }
+    private IEnumerator OnFinishSubmit()
+    {
+        var fadeTime = FadeDuration;
+        var elapsedTime = 0f;
+
+        while (elapsedTime < fadeTime)
+        {
+            elapsedTime += Time.unscaledDeltaTime;
+            yield return null;
+        }
+
+        if (_isSelect)
+            ChangeTransition(1);
     }
     private void ChangeTransition(int i)
     {
@@ -136,6 +194,23 @@ public class CustomButton : MonoBehaviour,
                 break;
         }
     }
+    private void Press()
+    {
+        switch(Type)
+        {
+            case Type.Normal:
+                OnClickCallback?.Invoke();
+                break;
+
+            case Type.SceneChangeSingle:
+                SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Single);
+                break;
+
+            case Type.SceneChangeAdditive:
+                SceneManager.LoadSceneAsync(SceneName, LoadSceneMode.Additive);
+                break;
+        }
+    }
 }
 public enum TransitionType
 {
@@ -143,4 +218,10 @@ public enum TransitionType
     Color,
     Sprite,
     Animation,
+}
+public enum Type
+{
+    Normal,
+    SceneChangeSingle,
+    SceneChangeAdditive,
 }
