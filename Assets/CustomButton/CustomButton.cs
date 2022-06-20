@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -18,6 +19,7 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     AudioSource _audioSource;
     Animator _anim;
     bool _isSelect;
+    bool _isPointer;
 
     public Image OnSelectImage;
 
@@ -26,6 +28,7 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     public AudioClip OnPointerClickAudio;
 
     public TransitionType Transition;
+    public ColorBlock test;
 
     public Type Type;
 
@@ -40,9 +43,9 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     public string SceneName;
 
     /// <summary>
-    /// クリックした時にさせたい処理
+    /// クリックした時にさせたい処理(引数なし)
     /// </summary>
-    public event Action OnClickCallback;
+    public ClickCallback OnClickCallback = new ClickCallback();
 
     private void Start()
     {
@@ -72,6 +75,9 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     /// <param name="eventData"></param>
     public override void OnPointerDown(PointerEventData eventData) 
     {
+        if (IsInteractable() && navigation.mode != Navigation.Mode.None)
+            EventSystem.current.SetSelectedGameObject(gameObject, eventData);
+
         ChangeTransition(2);
     }
     /// <summary>
@@ -86,6 +92,8 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     }
     public override void OnPointerEnter(PointerEventData eventData)
     {
+        _isPointer = true;
+
         if (OnSelectImage)
         {
             OnSelectImage.enabled = true;
@@ -100,6 +108,10 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     }
     public override void OnPointerExit(PointerEventData eventData)
     {
+        _isPointer = false;
+
+        if (_isSelect) return;
+
         if (OnSelectImage)
         {
             OnSelectImage.enabled = false;
@@ -113,6 +125,8 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     /// <param name="eventData"></param>
     public void OnSubmit(BaseEventData eventData)
     {
+        if (_isPointer) return;
+
         //Debug.Log("クリック");
 
         if (OnPointerClickAudio)
@@ -176,6 +190,8 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
     }
     private void ChangeTransition(int i)
     {
+        if (!IsInteractable()) return;
+
         switch (Transition)
         {
             case TransitionType.None:
@@ -190,6 +206,8 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
                 break;
 
             case TransitionType.Animation:
+                foreach (var t in Animations)
+                    _anim.ResetTrigger(t);
                 _anim.SetTrigger(Animations[i]);
                 break;
         }
@@ -211,6 +229,10 @@ public class CustomButton : Selectable, ISubmitHandler, IPointerClickHandler
                 break;
         }
     }
+    protected override void DoStateTransition(SelectionState state, bool instant)
+    {
+        
+    }
 }
 public enum TransitionType
 {
@@ -225,3 +247,6 @@ public enum Type
     SceneChangeSingle,
     SceneChangeAdditive,
 }
+
+[Serializable]
+public class ClickCallback : UnityEvent { }

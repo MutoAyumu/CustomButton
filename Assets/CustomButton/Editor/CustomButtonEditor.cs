@@ -22,6 +22,9 @@ public class CustomButtonEditor : Editor
 
         serializedObject.Update();
         //
+        button.interactable = EditorGUILayout.Toggle("Interactable", button.interactable);
+
+        EditorGUILayout.Space();
 
         button.Transition = (TransitionType)EditorGUILayout.EnumPopup("Transition", button.Transition);
 
@@ -80,6 +83,7 @@ public class CustomButtonEditor : Editor
                 EditorGUI.indentLevel--;
                 break;
         }
+
         //
         serializedObject.ApplyModifiedProperties();
 
